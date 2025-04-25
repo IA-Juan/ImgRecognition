@@ -4,58 +4,93 @@ import matplotlib.pyplot as plt
 import os
 import urllib.request
 
-# Crear carpeta "images" si no existe
-output_dir = "images"
-os.makedirs(output_dir, exist_ok=True)
 
-# Descargar imagen de muestra (lena.jpg)
-image_url = 'https://upload.wikimedia.org/wikipedia/en/7/7d/Lenna_%28test_image%29.png'
-image_path = os.path.join(output_dir, 'original.png')
-if not os.path.exists(image_path):
-    urllib.request.urlretrieve(image_url, image_path)
+class ImageProcessor:
+    def __init__(self, image_url, output_dir="images"):
+        self.image_url = image_url
+        self.output_dir = output_dir
+        self.image_path = os.path.join(self.output_dir, 'original.png')
 
-# 1. Cargar imagen en color (BGR)
-image_bgr = cv2.imread(image_path)
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.download_image()
+        self.image_bgr = cv2.imread(self.image_path)
+        self.image_rgb = cv2.cvtColor(self.image_bgr, cv2.COLOR_BGR2RGB)
+        self.image_gray = cv2.cvtColor(self.image_bgr, cv2.COLOR_BGR2GRAY)
 
-# Convertir de BGR a RGB
-image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+    def download_image(self):
+        if not os.path.exists(self.image_path):
+            urllib.request.urlretrieve(self.image_url, self.image_path)
 
-# Visualizar y guardar la imagen original en RGB
-plt.imshow(image_rgb)
-plt.title("Imagen Original (RGB)")
-plt.axis('off')
-plt.savefig(os.path.join(output_dir, "original_rgb.png"))
-plt.show()
+    def save_image(self, image, name, cmap=None):
+        path = os.path.join(self.output_dir, name)
+        if cmap:
+            plt.imsave(path, image, cmap=cmap)
+        else:
+            plt.imsave(path, image)
+    
+    def show_original(self):
+        """Muestra y guarda la imagen original en RGB."""
+        self.save_image(self.image_rgb, "original_rgb.png")
 
-# 2. Conversión a escala de grises
-image_gray = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2GRAY)
-plt.imshow(image_gray, cmap='gray')
-plt.title("Imagen en Escala de Grises")
-plt.axis('off')
-plt.savefig(os.path.join(output_dir, "gray.png"))
-plt.show()
+        plt.imshow(self.image_rgb)
+        plt.title("Imagen Original (RGB)")
+        plt.axis('off')
+        plt.tight_layout()
+        plt.show()
 
-# 3. Reducción de niveles de gris
-def reduce_gray_levels(image, levels):
-    factor = 256 // levels
-    reduced = (image // factor) * factor
-    return reduced.astype(np.uint8)
+    def show_gray(self):
+        """Muestra y guarda la imagen en escala de grises, e indica cuántos niveles de gris únicos tiene."""
+        self.save_image(self.image_gray, "gray.png", cmap='gray')
 
-levels_list = [2, 4, 8, 16, 32, 64, 128, 256]
+        plt.imshow(self.image_gray, cmap='gray')
+        plt.title("Escala de Grises")
+        plt.axis('off')
+        plt.tight_layout()
+        plt.show()
 
-for level in levels_list:
-    reduced_img = reduce_gray_levels(image_gray, level)
-    plt.imshow(reduced_img, cmap='gray')
-    plt.title(f"{level} niveles de gris")
-    plt.axis('off')
-    filename = f"gray_{level}_levels.png"
-    plt.savefig(os.path.join(output_dir, filename))
-    plt.show()
+        unique_levels = np.unique(self.image_gray)
+        print(f"La imagen en escala de grises tiene {len(unique_levels)} niveles de gris únicos.")
 
-# 4. Detección de bordes con Canny
-edges = cv2.Canny(image_gray, 100, 200)
-plt.imshow(edges, cmap='gray')
-plt.title("Detección de Bordes - Canny")
-plt.axis('off')
-plt.savefig(os.path.join(output_dir, "canny_edges.png"))
-plt.show()
+    def reduce_gray_levels(self, levels):
+        factor = 256 // levels
+        reduced = (self.image_gray // factor) * factor
+        return reduced.astype(np.uint8)
+
+    def show_reduced_grays(self, levels_list=None):
+        if levels_list is None:
+            levels_list = [2, 4, 8, 16, 32, 64, 128, 256]
+
+        fig, axs = plt.subplots(2, 4, figsize=(16, 8))
+
+        for idx, level in enumerate(levels_list):
+            reduced_img = self.reduce_gray_levels(level)
+            row, col = divmod(idx, 4)
+            axs[row, col].imshow(reduced_img, cmap='gray')
+            axs[row, col].set_title(f"{level} niveles")
+            axs[row, col].axis('off')
+            self.save_image(reduced_img, f"gray_{level}_levels.png", cmap='gray')
+
+        plt.tight_layout()
+        plt.show()
+
+    def show_canny_edges(self, threshold1=100, threshold2=200):
+        edges = cv2.Canny(self.image_gray, threshold1, threshold2)
+        self.save_image(edges, "canny_edges.png", cmap='gray')
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        ax.imshow(edges, cmap='gray')
+        ax.set_title("Detección de Bordes (Canny)")
+        ax.axis('off')
+        plt.tight_layout()
+        plt.show()
+
+
+# 🔧 Uso de la clase
+if __name__ == "__main__":
+    image_url = 'https://upload.wikimedia.org/wikipedia/en/7/7d/Lenna_%28test_image%29.png'
+    processor = ImageProcessor(image_url)
+
+    processor.show_original()
+    processor.show_gray()
+    processor.show_reduced_grays()
+    processor.show_canny_edges()
