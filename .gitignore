@@ -1,0 +1,14 @@
+# Ignorar entorno virtual
+venv/
+Include/
+Lib/
+Scripts/
+share/
+
+
+# Caché de Python
+__pycache__/
+*.pyc
+
+# Config VSCode
+.vscode/
